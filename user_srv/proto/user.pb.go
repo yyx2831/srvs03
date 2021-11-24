@@ -15,6 +15,7 @@ import (
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
+	"srvs03/user_srv/handler"
 	sync "sync"
 )
 
@@ -931,7 +932,7 @@ func (*UnimplementedUserServer) CheckPassWord(context.Context, *PasswordCheckInf
 	return nil, status.Errorf(codes.Unimplemented, "method CheckPassWord not implemented")
 }
 
-func RegisterUserServer(s *grpc.Server, srv UserServer) {
+func RegisterUserServer(s *grpc.Server, srv *handler.UserServer) {
 	s.RegisterService(&_User_serviceDesc, srv)
 }
 
