@@ -1,22 +1,24 @@
 package global
 
 import (
-	"log"
-	"os"
-	"time"
-
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
+	"log"
+	"os"
+	"srvs03/user_srv/config"
+	"time"
 )
 
 var (
-	DB *gorm.DB
+	DB           *gorm.DB
+	ServerConfig config.ServerConfig
+	NacosConfig  config.NacosConfig
 )
 
 func init() {
-	dsn := "root:root@tcp(192.168.0.104:3306)/mxshop_user_srv?charset=utf8mb4&parseTime=True&loc=Local"
+	dsn := "root:123456qwe@tcp(localhost:3306)/user_srv?charset=utf8mb4&parseTime=True&loc=Local"
 
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer

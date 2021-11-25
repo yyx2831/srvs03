@@ -4,19 +4,18 @@ import (
 	"context"
 	"crypto/sha512"
 	"fmt"
-	"srvs03/user_srv/global"
-	"srvs03/user_srv/model"
-	"srvs03/user_srv/proto"
+	"github.com/anaskhan96/go-password-encoder"
+	"github.com/golang/protobuf/ptypes/empty"
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/empty"
-
-	"github.com/anaskhan96/go-password-encoder"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
+
+	"srvs03/user_srv/global"
+	"srvs03/user_srv/model"
+	"srvs03/user_srv/proto"
 )
 
 type UserServer struct{}
@@ -57,16 +56,19 @@ func Paginate(page, pageSize int) func(db *gorm.DB) *gorm.DB {
 }
 
 func (s *UserServer) GetUserList(ctx context.Context, req *proto.PageInfo) (*proto.UserListResponse, error) {
+	fmt.Println("adfasd")
 	//获取用户列表
 	var users []model.User
-	result := global.DB.Find(users)
+	result := global.DB.Find(&users)
 	if result.Error != nil {
 		return nil, result.Error
 	}
+	fmt.Println("用户列表")
 	rsp := &proto.UserListResponse{}
 	rsp.Total = int32(result.RowsAffected)
 
 	global.DB.Scopes(Paginate(int(req.Pn), int(req.PSize))).Find(&users)
+
 	for _, user := range users {
 		userInfoRsp := ModelToRsponse(user)
 		rsp.Data = append(rsp.Data, &userInfoRsp)
@@ -74,59 +76,49 @@ func (s *UserServer) GetUserList(ctx context.Context, req *proto.PageInfo) (*pro
 	return rsp, nil
 }
 
-func (s *UserServer) GetUserByMobile(ctx context.Context, req *proto.MobileRequest, opts ...grpc.CallOption) (*proto.UserInfoResponse, error) {
-	//根据手机号获取用户信息
+func (s *UserServer) GetUserByMobile(ctx context.Context, req *proto.MobileRequest) (*proto.UserInfoResponse, error) {
+	//通过手机号码查询用户
 	var user model.User
 	result := global.DB.Where(&model.User{Mobile: req.Mobile}).First(&user)
 	if result.RowsAffected == 0 {
-		return nil, status.Errorf(
-			codes.NotFound,
-			"mobile %s not found",
-			req.Mobile,
-		)
+		return nil, status.Errorf(codes.NotFound, "用户不存在")
 	}
 	if result.Error != nil {
 		return nil, result.Error
 	}
+
 	userInfoRsp := ModelToRsponse(user)
 	return &userInfoRsp, nil
 }
 
-func (s *UserServer) GetUserById(ctx context.Context, req *proto.IdRequest, opts ...grpc.CallOption) (*proto.UserInfoResponse, error) {
-	//根据id获取用户信息
+func (s *UserServer) GetUserById(ctx context.Context, req *proto.IdRequest) (*proto.UserInfoResponse, error) {
+	//通过id查询用户
 	var user model.User
 	result := global.DB.First(&user, req.Id)
 	if result.RowsAffected == 0 {
-		return nil, status.Errorf(
-			codes.NotFound,
-			"id： %d 未找到",
-			req.Id,
-		)
+		return nil, status.Errorf(codes.NotFound, "用户不存在")
 	}
 	if result.Error != nil {
 		return nil, result.Error
 	}
+
 	userInfoRsp := ModelToRsponse(user)
 	return &userInfoRsp, nil
 }
 
-func (s *UserServer) CreateUser(ctx context.Context, req *proto.CreateUserInfo, opts ...grpc.CallOption) (*proto.UserInfoResponse, error) {
+func (s *UserServer) CreateUser(ctx context.Context, req *proto.CreateUserInfo) (*proto.UserInfoResponse, error) {
 	//新建用户
 	var user model.User
-	result := global.DB.Where("mobile = ?", req.Mobile).First(&user)
-	if result.RowsAffected != 0 {
-		return nil, status.Errorf(
-			codes.AlreadyExists,
-			"用户： %s 已经存在",
-			req.Mobile,
-		)
+	result := global.DB.Where(&model.User{Mobile: req.Mobile}).First(&user)
+	if result.RowsAffected == 1 {
+		return nil, status.Errorf(codes.AlreadyExists, "用户已存在")
 	}
 
 	user.Mobile = req.Mobile
 	user.NickName = req.NickName
 
 	//密码加密
-	options := &password.Options{SaltLen: 16, Iterations: 100, KeyLen: 32, HashFunction: sha512.New}
+	options := &password.Options{16, 100, 32, sha512.New}
 	salt, encodedPwd := password.Encode(req.PassWord, options)
 	user.Password = fmt.Sprintf("$pbkdf2-sha512$%s$%s", salt, encodedPwd)
 
@@ -137,26 +129,22 @@ func (s *UserServer) CreateUser(ctx context.Context, req *proto.CreateUserInfo, 
 
 	userInfoRsp := ModelToRsponse(user)
 	return &userInfoRsp, nil
-
 }
 
-func (s *UserServer) UpdateUser(ctx context.Context, req *proto.UpdateUserInfo, opts ...grpc.CallOption) (*empty.Empty, error) {
-	//更新用户
+func (s *UserServer) UpdateUser(ctx context.Context, req *proto.UpdateUserInfo) (*empty.Empty, error) {
+	//个人中心更新用户
 	var user model.User
 	result := global.DB.First(&user, req.Id)
 	if result.RowsAffected == 0 {
-		return nil, status.Errorf(
-			codes.NotFound,
-			"id： %d 未找到",
-			req.Id,
-		)
+		return nil, status.Errorf(codes.NotFound, "用户不存在")
 	}
+
 	birthDay := time.Unix(int64(req.BirthDay), 0)
 	user.NickName = req.NickName
 	user.Birthday = &birthDay
 	user.Gender = req.Gender
 
-	result = global.DB.Save(user)
+	result = global.DB.Save(&user)
 	if result.Error != nil {
 		return nil, status.Errorf(codes.Internal, result.Error.Error())
 	}
@@ -164,10 +152,9 @@ func (s *UserServer) UpdateUser(ctx context.Context, req *proto.UpdateUserInfo, 
 }
 
 func (s *UserServer) CheckPassWord(ctx context.Context, req *proto.PasswordCheckInfo) (*proto.CheckResponse, error) {
-	//检查密码
+	//校验密码
 	options := &password.Options{SaltLen: 16, Iterations: 100, KeyLen: 32, HashFunction: sha512.New}
 	passwordInfo := strings.Split(req.EncryptedPassword, "$")
 	check := password.Verify(req.Password, passwordInfo[2], passwordInfo[3], options)
 	return &proto.CheckResponse{Success: check}, nil
-
 }
