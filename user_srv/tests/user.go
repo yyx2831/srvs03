@@ -3,11 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"srvs03/user_srv/handler"
-
 	"google.golang.org/grpc"
 
-	_ "github.com/mbobakov/grpc-consul-resolver" // It's importan
 	"srvs03/user_srv/proto"
 )
 
@@ -24,8 +21,7 @@ func Init() {
 }
 
 func TestGetUserList() {
-	server := handler.UserServer{}
-	rsp, err := server.GetUserList(context.Background(), &proto.PageInfo{
+	rsp, err := userClient.GetUserList(context.Background(), &proto.PageInfo{
 		Pn:    1,
 		PSize: 5,
 	})
@@ -48,8 +44,8 @@ func TestGetUserList() {
 func TestCreateUser() {
 	for i := 0; i < 10; i++ {
 		rsp, err := userClient.CreateUser(context.Background(), &proto.CreateUserInfo{
-			NickName: fmt.Sprintf("bobby%d", i),
-			Mobile:   fmt.Sprintf("1878222222%d", i),
+			NickName: fmt.Sprintf("yyx%d", i),
+			Mobile:   fmt.Sprintf("1732659854%d", i),
 			PassWord: "admin123",
 		})
 		if err != nil {

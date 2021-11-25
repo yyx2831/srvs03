@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"google.golang.org/grpc/keepalive"
 	"net"
 	_ "os"
 	_ "os/signal"
 	_ "syscall"
+	"time"
 
 	_ "github.com/satori/go.uuid"
 	_ "go.uber.org/zap"
@@ -33,7 +35,12 @@ func main() {
 		fmt.Println("请输入正确的ip地址和端口号")
 		return
 	}
-	s := grpc.NewServer()
+	//s := grpc.NewServer()
+	s := grpc.NewServer(
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle: 5 * time.Minute, // <--- This fixes it!
+		}),
+	)
 	proto.RegisterUserServer(s, &handler.UserServer{})
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", *IP, *Port))
 	if err != nil {
