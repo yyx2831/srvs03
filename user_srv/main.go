@@ -26,7 +26,7 @@ import (
 
 func main() {
 	IP := flag.String("ip", "127.0.0.1", "ip地址")
-	Port := flag.Int("port", 50052, "端口号")
+	Port := flag.Int("port", 50051, "端口号")
 
 	flag.Parse()
 	fmt.Println("ip:", *IP, "port:", *Port)
